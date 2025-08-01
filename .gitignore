@@ -1,0 +1,47 @@
+# Perl build artifacts
+Makefile
+Makefile.old
+Build
+Build.bat
+_build/
+blib/
+pm_to_blib
+
+# CPAN distribution
+MANIFEST.bak
+META.yml
+META.json
+MYMETA.yml
+MYMETA.json
+*.tar.gz
+
+# Perl runtime
+*.o
+*.bs
+*.def
+
+# Editor/IDE files
+*~
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Coverage reports
+cover_db/
+*.gcov
+*.gcda
+*.gcno
+
+# Testing
+prove_state
+.prove
+
+# Local development
+local/
+.carton/
+cpanfile.snapshot
