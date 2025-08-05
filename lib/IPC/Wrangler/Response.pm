@@ -81,6 +81,10 @@ our @EXPORT_OK = qw(BAD GOOD UGLY try);
 Factory function for generating GOOD response objects.  The arguments
 become the result.
 
+=cut
+
+sub GOOD { bless([@_], 'IPC::Wrangler::Response::good') }
+
 =head2 BAD, UGLY
 
     $response = BAD($reason, @codes);
@@ -94,13 +98,11 @@ information about the failure in a machine-readable way.
 =cut
 
 sub BAD  { bless([@_], 'IPC::Wrangler::Response::bad' ) }
-sub GOOD { bless([@_], 'IPC::Wrangler::Response::good') }
 sub UGLY { bless([@_], 'IPC::Wrangler::Response::ugly') }
 
 =head2 try
 
     $response = try($code, @args);
-    $response = try { ... } @args;
 
 Invokes C<< @result = $code->(@args) >> and returns the @result as a
 response object.  If the $code returns a single blessed object which
@@ -111,7 +113,7 @@ raises an exception when called, then $response is UGLY.
 
 =cut
 
-sub try (&@) {
+sub try {
     my $code = shift;
     unless (ref($code) eq 'CODE') {
         $code = ref($code) || (defined($code) ? qq("$code") : 'undef');
@@ -161,21 +163,10 @@ GOOD; dies for BAD and UGLY.
 
 =cut
 
-package IPC::Wrangler::Response::bad {
-    *DOES = \&IPC::Wrangler::Response::DOES;
-    sub is_bad  { 1 }
-    sub is_good { 0 }
-    sub is_ugly { 0 }
-    sub on_gbu  { ref($_[2]) eq 'CODE' ? $_[2]->() : $_[2] }
-    sub reason  { $_[0][0] }
-    sub codes   { @{$_[0]}[1..$#{$_[0]}] }
-    sub result  { die "[BAD] $_[0][0]\n" }
-}
-
 package IPC::Wrangler::Response::good {
     *DOES = \&IPC::Wrangler::Response::DOES;
-    sub is_bad  { 0 }
     sub is_good { 1 }
+    sub is_bad  { 0 }
     sub is_ugly { 0 }
     sub on_gbu  { ref($_[1]) eq 'CODE' ? $_[1]->() : $_[1] }
     sub reason  { '' }
@@ -183,10 +174,21 @@ package IPC::Wrangler::Response::good {
     sub result  { wantarray ? @{$_[0]} : $_[0][0] }
 }
 
+package IPC::Wrangler::Response::bad {
+    *DOES = \&IPC::Wrangler::Response::DOES;
+    sub is_good { 0 }
+    sub is_bad  { 1 }
+    sub is_ugly { 0 }
+    sub on_gbu  { ref($_[2]) eq 'CODE' ? $_[2]->() : $_[2] }
+    sub reason  { $_[0][0] }
+    sub codes   { @{$_[0]}[1..$#{$_[0]}] }
+    sub result  { die "[BAD] $_[0][0]\n" }
+}
+
 package IPC::Wrangler::Response::ugly {
     *DOES = \&IPC::Wrangler::Response::DOES;
-    sub is_bad  { 0 }
     sub is_good { 0 }
+    sub is_bad  { 0 }
     sub is_ugly { 1 }
     sub on_gbu  { ref($_[3]) eq 'CODE' ? $_[3]->() : $_[3] }
     sub reason  { $_[0][0] }
