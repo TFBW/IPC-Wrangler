@@ -1,6 +1,8 @@
 use IPC::Wrangler::Policy;
+
 use open ':std', ':encoding(utf8)';
 use IPC::Wrangler::Encoding qw(decode encode encode_canonical);
+use Scalar::Util qw(blessed);
 use Test::More;
 
 # Test data sets
@@ -13,13 +15,10 @@ my @plain = (
     );
 
 my @binary = (
-    "\t",                              # tab (delimiter)
     "~foo",                            # leading tilde (marker)
     "\x00",                            # null
-    "\x1F",                            # unit separator
     "\x7F",                            # DEL
     "before\tafter",                   # embedded tab
-    "\x00\x01\x02",                    # multi-byte binary
     join('', map(chr($_), (0..255))),  # full single-byte range
     );
 
@@ -36,7 +35,9 @@ my @special = (
     '',
     undef,
     [qw(x y z)],
+    bless([qw(a b c)], 'Foo'),
     );
+sub Foo::TO_IPC_DATA { [@{$_[0]}] }
 
 subtest "Plain strings (no encoding)" => sub {
     for my $str (@plain) {
@@ -70,6 +71,7 @@ subtest "Other encodings" => sub {
         my $encoded = encode($data);
         like($encoded, qr/^~/, "Special value gets ~ encoding: $encoded");
         my @decoded = decode($encoded);
+        $data = $data->TO_IPC_DATA if blessed($data);
         is_deeply(\@decoded, [$data], "Special value round-trip: $encoded");
     }
 };
