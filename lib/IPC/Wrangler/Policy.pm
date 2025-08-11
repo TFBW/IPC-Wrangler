@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use utf8;
 use feature ':5.14'; # package BLOCK syntax
+use if $ENV{DEBUG} => 'IPC::Wrangler::Debug';
 
 =head1 NAME
 
@@ -26,6 +27,8 @@ sub import {
     import warnings;
     import utf8;
     import feature ':5.14';
+    IPC::Wrangler::Debug->import
+        if exists &IPC::Wrangler::Debug::import;
 }
 
 1;
