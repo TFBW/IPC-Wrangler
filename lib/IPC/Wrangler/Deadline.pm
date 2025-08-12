@@ -4,7 +4,6 @@ package IPC::Wrangler::Deadline;
 
 use Exporter qw(import);
 use Scalar::Util qw(looks_like_number);
-use Socket qw(SO_RCVTIMEO SO_SNDTIMEO);
 use Time::HiRes qw(time);
 
 =head1 NAME
@@ -18,15 +17,12 @@ IPC::Wrangler::Deadline - object for managing timeouts
     $deadline = deadline_in($duration);
     $sec = $deadline->remaining;
     $bool = $deadline->expired;
-    $deadline->setsockopt($sock);
 
 =head1 DESCRIPTION
 
-This module provides a simple object model for deadlines and timeouts.
-It also has a specialised method for setting socket timeout options to
-match the deadline, and a simple duration string parser function.
-
-L<Time::HiRes> is used for deadlines; numbers can be floats.
+This module provides a simple object model for deadlines and timeouts
+and a simple duration string parser function.  L<Time::HiRes> is used
+for deadlines; numbers can be floats.
 
 =cut
 
@@ -128,37 +124,5 @@ Returns true if the deadline has been reached.
 =cut
 
 sub expired { time > ${$_[0]} }
-
-=head2 setsockopt
-
-    $self->setsockopt($socket);
-
-Sets read/write timeouts on the $socket to match the deadline, or sets
-non-blocking mode if expired.  The $socket should be an L<IO::Socket>
-object.  Call this immediately before performing IO operations and be
-ready to catch EAGAIN, EWOULDBLOCK, and possibly EINPROGRESS errors.
-Dies if any of the changes fail or returns $self.
-
-=cut
-
-sub setsockopt {
-    my ($self, $sock) = @_;
-    my $rem = $$self - time;
-    if ($rem > 0) {
-        $sock->blocking(1)
-            // die "Can't set socket to blocking mode: $!\n";
-        my $sec = int($rem);
-        my $timeval = pack('l!l!', $sec, int(1_000_000 * ($rem - $sec)));
-        $sock->sockopt(SO_RCVTIMEO, $timeval)
-            // die "Can't set SO_RCVTIMEO: $!\n";
-        $sock->sockopt(SO_SNDTIMEO, $timeval)
-            // die "Can't set SO_SNDTIMEO: $!\n";
-    }
-    else {
-        $sock->blocking(0)
-            // die "Can't set socket to non-blocking mode: $!\n";
-    }
-    return $self;
-}
 
 1;

@@ -40,7 +40,8 @@ The list can contain plain strings (including Unicode), undef, and any
 references which convert to JSON.  Arbitrary byte-strings are allowed.
 Printable ASCII strings not starting with "~" are transported as-is.
 Numbers are transported as strings.  Arbitrary objects are supported
-if they implement a TO_IPC_DATA method which returns a supported type.
+if they implement a TO_IPC_DATA method which returns supported types.
+Such objects may expand to a list of values.
 
 =item Encoded data
 

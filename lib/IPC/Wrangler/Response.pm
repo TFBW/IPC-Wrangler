@@ -12,11 +12,11 @@ IPC::Wrangler::Response - IPC response object abstraction
 =head1 SYNOPSIS
 
     use IPC::Wrangler::Response qw(GOOD BAD UGLY try);
-    $response = try {
+    $response = try sub {
         my ($x) = @_;
         return GOOD($x + 1) if $x > 0;
         return BAD("x must be positive");
-    } @args;
+    }, @args;
     print $response->on_gbu(
         "That worked.\n",
         "That didn't work.\n",
@@ -130,10 +130,41 @@ sub try {
 
 sub DOES { $_[1] && $_[1] eq __PACKAGE__ }
 
-=head1 OBJECT MODEL
+=head1 CLASS METHODS
+
+In addition to the factory functions, above, the class has one method
+for generating objects.  This is only available as a class method: the
+objects do not support it.
+
+=head2 new
+
+    $response = IPC::Wrangler::Response->new($type, @args);
+
+Returns a GOOD, BAD, or UGLY response based on $type matching '+',
+'-', or '!', respectively.  If $type matches none of the above, the
+result is UGLY with an error message.  This is intended for use in
+conjunction with the TO_IPC_DATA() method, below.
+
+=cut
+
+sub new {
+    my ($class, $type, @args) = @_;
+    return
+        $type eq '+' ? GOOD(@args) :
+        $type eq '-' ? BAD(@args)  :
+        $type eq '!' ? UGLY(@args) :
+        UGLY("Malformed response", "TYPE=$type");
+}
+
+=head1 OBJECT METHODS
 
 B<IPC::Wrangler::Response> objects, whether GOOD, BAD, or UGLY, have
 the following methods.
+
+=head2 TO_IPC_DATA
+
+This method converts the object into a list of values which can be
+passed to the new() class method to recreate the object.
 
 =head2 is_good, is_bad, is_ugly
 
@@ -165,35 +196,38 @@ GOOD; dies for BAD and UGLY.
 
 package IPC::Wrangler::Response::good {
     *DOES = \&IPC::Wrangler::Response::DOES;
-    sub is_good { 1 }
-    sub is_bad  { 0 }
-    sub is_ugly { 0 }
-    sub on_gbu  { ref($_[1]) eq 'CODE' ? $_[1]->() : $_[1] }
-    sub reason  { '' }
-    sub codes   { () }
-    sub result  { wantarray ? @{$_[0]} : $_[0][0] }
+    sub TO_IPC_DATA { ('+', @{$_[0]}) }
+    sub is_good     { 1 }
+    sub is_bad      { 0 }
+    sub is_ugly     { 0 }
+    sub on_gbu      { ref($_[1]) eq 'CODE' ? $_[1]->() : $_[1] }
+    sub reason      { '' }
+    sub codes       { () }
+    sub result      { wantarray ? @{$_[0]} : $_[0][0] }
 }
 
 package IPC::Wrangler::Response::bad {
     *DOES = \&IPC::Wrangler::Response::DOES;
-    sub is_good { 0 }
-    sub is_bad  { 1 }
-    sub is_ugly { 0 }
-    sub on_gbu  { ref($_[2]) eq 'CODE' ? $_[2]->() : $_[2] }
-    sub reason  { $_[0][0] }
-    sub codes   { @{$_[0]}[1..$#{$_[0]}] }
-    sub result  { die "[BAD] $_[0][0]\n" }
+    sub TO_IPC_DATA { ('-', @{$_[0]}) }
+    sub is_good     { 0 }
+    sub is_bad      { 1 }
+    sub is_ugly     { 0 }
+    sub on_gbu      { ref($_[2]) eq 'CODE' ? $_[2]->() : $_[2] }
+    sub reason      { $_[0][0] }
+    sub codes       { @{$_[0]}[1..$#{$_[0]}] }
+    sub result      { die "[BAD] $_[0][0]\n" }
 }
 
 package IPC::Wrangler::Response::ugly {
     *DOES = \&IPC::Wrangler::Response::DOES;
-    sub is_good { 0 }
-    sub is_bad  { 0 }
-    sub is_ugly { 1 }
-    sub on_gbu  { ref($_[3]) eq 'CODE' ? $_[3]->() : $_[3] }
-    sub reason  { $_[0][0] }
-    sub codes   { @{$_[0]}[1..$#{$_[0]}] }
-    sub result  { die "[UGLY] $_[0][0]\n" }
+    sub TO_IPC_DATA { ('!', @{$_[0]}) }
+    sub is_good     { 0 }
+    sub is_bad      { 0 }
+    sub is_ugly     { 1 }
+    sub on_gbu      { ref($_[3]) eq 'CODE' ? $_[3]->() : $_[3] }
+    sub reason      { $_[0][0] }
+    sub codes       { @{$_[0]}[1..$#{$_[0]}] }
+    sub result      { die "[UGLY] $_[0][0]\n" }
 }
 
 1;
